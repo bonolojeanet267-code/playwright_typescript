@@ -56,10 +56,13 @@ steps:
       publishLocation: pipeline
 
   - task: PowerShell@2
-    displayName: Create Azure DevOps bugs for failed tests
+    displayName: Create Jira issues for failed tests
     condition: failed('Run Playwright UI and API tests')
     inputs:
-      filePath: scripts/create-azure-bugs.ps1
+      filePath: scripts/create-jira-issues.ps1
     env:
-      AZURE_DEVOPS_EXT_PAT: $(System.AccessToken)
+      JIRA_BASE_URL: $(JIRA_BASE_URL)
+      JIRA_EMAIL: $(JIRA_EMAIL)
+      JIRA_API_TOKEN: $(JIRA_API_TOKEN)
+      JIRA_PROJECT_KEY: $(JIRA_PROJECT_KEY)
       FAILED_TEST_RESULTS: '$(System.DefaultWorkingDirectory)/test-results/playwright-junit.xml'
