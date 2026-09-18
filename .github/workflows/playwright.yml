@@ -10,11 +10,14 @@ jobs:
     strategy:
       matrix:
         browser: ["chromium", "firefox", "webkit"]
-    timeout-minutes: 15
+    timeout-minutes: 20
     runs-on: ubuntu-latest
     env:
       SAUCE_USERNAME: ${{ secrets.SAUCE_USERNAME }}
       SAUCE_PASSWORD: ${{ secrets.SAUCE_PASSWORD }}
+      XRAY_CLIENT_ID: ${{ secrets.XRAY_CLIENT_ID }}
+      XRAY_CLIENT_SECRET: ${{ secrets.XRAY_CLIENT_SECRET }}
+      XRAY_PROJECT_KEY: ${{ secrets.XRAY_PROJECT_KEY }}
 
     steps:
       - name: Checkout repository
@@ -23,7 +26,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 20
           cache: npm
 
       - name: Install dependencies
@@ -35,6 +38,18 @@ jobs:
       - name: Run Playwright UI tests
         run: npx playwright test --project="${{ matrix.browser }}"
 
+      - name: Import results to Xray
+        if: always()
+        run: |
+          if [ -f "test-results/playwright-junit.xml" ]; then
+            curl -f --location --request POST "https://xray.cloud.getxray.app/api/v2/import/execution/junit" \
+              --user "$XRAY_CLIENT_ID:$XRAY_CLIENT_SECRET" \
+              -F "file=@test-results/playwright-junit.xml" \
+              -F "projectKey=$XRAY_PROJECT_KEY"
+          else
+            echo "No JUnit file available for Xray import."
+          fi
+
       - name: Upload Playwright report
         if: always()
         uses: actions/upload-artifact@v4
@@ -45,10 +60,13 @@ jobs:
 
   api-test:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     env:
       SAUCE_USERNAME: ${{ secrets.SAUCE_USERNAME }}
       SAUCE_PASSWORD: ${{ secrets.SAUCE_PASSWORD }}
+      XRAY_CLIENT_ID: ${{ secrets.XRAY_CLIENT_ID }}
+      XRAY_CLIENT_SECRET: ${{ secrets.XRAY_CLIENT_SECRET }}
+      XRAY_PROJECT_KEY: ${{ secrets.XRAY_PROJECT_KEY }}
 
     steps:
       - name: Checkout repository
@@ -57,7 +75,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 20
           cache: npm
 
       - name: Install dependencies
@@ -68,6 +86,18 @@ jobs:
 
       - name: Run Playwright API tests
         run: npx playwright test --project=api
+
+      - name: Import results to Xray
+        if: always()
+        run: |
+          if [ -f "test-results/playwright-junit.xml" ]; then
+            curl -f --location --request POST "https://xray.cloud.getxray.app/api/v2/import/execution/junit" \
+              --user "$XRAY_CLIENT_ID:$XRAY_CLIENT_SECRET" \
+              -F "file=@test-results/playwright-junit.xml" \
+              -F "projectKey=$XRAY_PROJECT_KEY"
+          else
+            echo "No JUnit file available for Xray import."
+          fi
 
       - name: Upload Playwright report
         if: always()

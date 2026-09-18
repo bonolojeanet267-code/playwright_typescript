@@ -2,7 +2,19 @@
 
 [![Playwright Tests](https://github.com/bonolojeanet267-code/playwright_typescript/actions/workflows/playwright.yml/badge.svg)](https://github.com/bonolojeanet267-code/playwright_typescript/actions/workflows/playwright.yml)
 
-This project runs SauceDemo browser and HTTP smoke tests, publishes JUnit results to Azure DevOps, and creates a Jira issue for each failed test case in a pipeline run.
+This project runs SauceDemo browser and HTTP smoke tests and publishes the results to Jira through Xray Cloud so execution results and charts appear in the Jira dashboard.
+
+## Xray setup
+
+Add these GitHub repository secrets:
+
+- `XRAY_CLIENT_ID`
+- `XRAY_CLIENT_SECRET`
+- `XRAY_PROJECT_KEY`
+- `SAUCE_USERNAME`
+- `SAUCE_PASSWORD`
+
+The workflow runs the Playwright suite, writes JUnit XML, and imports the results to Xray using the Xray Cloud REST API so the Jira dashboard updates automatically.
 
 ## Local setup
 
