@@ -1,0 +1,23 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Playwright: API tests (script)",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "npm run test:api"
+    },
+    {
+      "name": "Playwright: UI tests (script)",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "npm run test:ui"
+    },
+    {
+      "name": "Playwright: All tests (script)",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "npm run test"
+    }
+  ]
+}
