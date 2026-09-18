@@ -1,11 +1,19 @@
 import { defineConfig, devices } from '@playwright/test';
+import { config } from 'dotenv';
+
+if (process.env.ENVIRONMENT) {
+  config({ path: `.env.${process.env.ENVIRONMENT}`, override: true });
+} else {
+  config();
+}
 
 export default defineConfig({
-  testDir: './tests',
+  testDir: './e2e/tests',
+  testMatch: '**/*.spec.ts',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 1 : 0,
-  workers: process.env.CI ? 2 : undefined,
+  retries: process.env.CI ? 2 : 0,
+  workers: process.env.CI ? 1 : 1,
   timeout: 30_000,
   expect: {
     timeout: 5_000,
@@ -17,30 +25,30 @@ export default defineConfig({
   ],
   outputDir: 'test-results',
   use: {
-    baseURL: 'https://www.saucedemo.com',
-    trace: 'on',
+    baseURL: process.env.URL ?? 'https://www.saucedemo.com',
+    trace: 'on-first-retry',
     screenshot: 'on',
     video: 'on',
   },
   projects: [
     {
-      name: 'api',
-      testMatch: '**/api/**/*.spec.ts',
-    },
-    {
       name: 'chromium',
-      testIgnore: '**/api/**/*.spec.ts',
       use: { ...devices['Desktop Chrome'] },
+      testDir: './e2e/tests/ui',
     },
     {
       name: 'firefox',
-      testIgnore: '**/api/**/*.spec.ts',
       use: { ...devices['Desktop Firefox'] },
+      testDir: './e2e/tests/ui',
     },
     {
       name: 'webkit',
-      testIgnore: '**/api/**/*.spec.ts',
       use: { ...devices['Desktop Safari'] },
+      testDir: './e2e/tests/ui',
+    },
+    {
+      name: 'api',
+      testDir: './e2e/tests/api',
     },
   ],
 });

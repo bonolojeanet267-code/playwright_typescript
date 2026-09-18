@@ -1,11 +1,7 @@
 import type { Page } from '@playwright/test';
 
-export class InventoryPage {
-  readonly page: Page;
-
-  constructor(page: Page) {
-    this.page = page;
-  }
+class InventoryPage {
+  constructor(private readonly page: Page) {}
 
   get productsHeader() {
     return this.page.getByText('Products');
@@ -79,3 +75,5 @@ export class InventoryPage {
     return this.page.getByText('Sauce Labs Backpack');
   }
 }
+
+export default InventoryPage;
