@@ -18,6 +18,11 @@ jobs:
       XRAY_CLIENT_ID: ${{ secrets.XRAY_CLIENT_ID }}
       XRAY_CLIENT_SECRET: ${{ secrets.XRAY_CLIENT_SECRET }}
       XRAY_PROJECT_KEY: ${{ secrets.XRAY_PROJECT_KEY }}
+      XRAY_TEST_PLAN_NAME: "Playwright UI test plan"
+      JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
+      JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
+      JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+      XRAY_TEST_PLAN_KEY: ${{ secrets.XRAY_TEST_PLAN_KEY }}
 
     steps:
       - name: Checkout repository
@@ -35,17 +40,49 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps ${{ matrix.browser }}
 
+      - name: Create or reuse Xray test plan
+        if: always()
+        shell: bash
+        run: |
+          if [ -n "$XRAY_TEST_PLAN_KEY" ]; then
+            echo "Reusing existing Xray test plan: $XRAY_TEST_PLAN_KEY"
+            echo "XRAY_TEST_PLAN_KEY=$XRAY_TEST_PLAN_KEY" >> "$GITHUB_ENV"
+            exit 0
+          fi
+
+          if [ -z "$JIRA_BASE_URL" ] || [ -z "$JIRA_EMAIL" ] || [ -z "$JIRA_API_TOKEN" ]; then
+            echo "Jira credentials are not configured. Skipping Xray test plan creation."
+            exit 0
+          fi
+
+          response=$(curl -sS -X POST \
+            -u "$JIRA_EMAIL:$JIRA_API_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "{\"fields\":{\"project\":{\"key\":\"$XRAY_PROJECT_KEY\"},\"summary\":\"$XRAY_TEST_PLAN_NAME - run $GITHUB_RUN_NUMBER\",\"issuetype\":{\"name\":\"Test Plan\"}}}" \
+            "$JIRA_BASE_URL/rest/api/3/issue")
+
+          key=$(echo "$response" | python -c "import sys, json; print(json.load(sys.stdin).get('key',''))")
+
+          if [ -z "$key" ]; then
+            echo "Failed to create the Jira/Xray Test Plan. Response: $response"
+            exit 1
+          fi
+
+          echo "Created Xray test plan: $key"
+          echo "XRAY_TEST_PLAN_KEY=$key" >> "$GITHUB_ENV"
+
       - name: Run Playwright UI tests
         run: npx playwright test --project="${{ matrix.browser }}"
 
-      - name: Import results to Xray
+      - name: Import results to Xray and attach to the test plan
         if: always()
         run: |
           if [ -f "test-results/playwright-junit.xml" ]; then
             curl -f --location --request POST "https://xray.cloud.getxray.app/api/v2/import/execution/junit" \
               --user "$XRAY_CLIENT_ID:$XRAY_CLIENT_SECRET" \
               -F "file=@test-results/playwright-junit.xml" \
-              -F "projectKey=$XRAY_PROJECT_KEY"
+              -F "projectKey=$XRAY_PROJECT_KEY" \
+              -F "testPlanKey=${XRAY_TEST_PLAN_KEY:-}"
           else
             echo "No JUnit file available for Xray import."
           fi
@@ -67,6 +104,11 @@ jobs:
       XRAY_CLIENT_ID: ${{ secrets.XRAY_CLIENT_ID }}
       XRAY_CLIENT_SECRET: ${{ secrets.XRAY_CLIENT_SECRET }}
       XRAY_PROJECT_KEY: ${{ secrets.XRAY_PROJECT_KEY }}
+      XRAY_TEST_PLAN_NAME: "Playwright API test plan"
+      JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
+      JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
+      JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+      XRAY_TEST_PLAN_KEY: ${{ secrets.XRAY_TEST_PLAN_KEY }}
 
     steps:
       - name: Checkout repository
@@ -84,17 +126,49 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps
 
+      - name: Create or reuse Xray test plan
+        if: always()
+        shell: bash
+        run: |
+          if [ -n "$XRAY_TEST_PLAN_KEY" ]; then
+            echo "Reusing existing Xray test plan: $XRAY_TEST_PLAN_KEY"
+            echo "XRAY_TEST_PLAN_KEY=$XRAY_TEST_PLAN_KEY" >> "$GITHUB_ENV"
+            exit 0
+          fi
+
+          if [ -z "$JIRA_BASE_URL" ] || [ -z "$JIRA_EMAIL" ] || [ -z "$JIRA_API_TOKEN" ]; then
+            echo "Jira credentials are not configured. Skipping Xray test plan creation."
+            exit 0
+          fi
+
+          response=$(curl -sS -X POST \
+            -u "$JIRA_EMAIL:$JIRA_API_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "{\"fields\":{\"project\":{\"key\":\"$XRAY_PROJECT_KEY\"},\"summary\":\"$XRAY_TEST_PLAN_NAME - run $GITHUB_RUN_NUMBER\",\"issuetype\":{\"name\":\"Test Plan\"}}}" \
+            "$JIRA_BASE_URL/rest/api/3/issue")
+
+          key=$(echo "$response" | python -c "import sys, json; print(json.load(sys.stdin).get('key',''))")
+
+          if [ -z "$key" ]; then
+            echo "Failed to create the Jira/Xray Test Plan. Response: $response"
+            exit 1
+          fi
+
+          echo "Created Xray test plan: $key"
+          echo "XRAY_TEST_PLAN_KEY=$key" >> "$GITHUB_ENV"
+
       - name: Run Playwright API tests
         run: npx playwright test --project=api
 
-      - name: Import results to Xray
+      - name: Import results to Xray and attach to the test plan
         if: always()
         run: |
           if [ -f "test-results/playwright-junit.xml" ]; then
             curl -f --location --request POST "https://xray.cloud.getxray.app/api/v2/import/execution/junit" \
               --user "$XRAY_CLIENT_ID:$XRAY_CLIENT_SECRET" \
               -F "file=@test-results/playwright-junit.xml" \
-              -F "projectKey=$XRAY_PROJECT_KEY"
+              -F "projectKey=$XRAY_PROJECT_KEY" \
+              -F "testPlanKey=${XRAY_TEST_PLAN_KEY:-}"
           else
             echo "No JUnit file available for Xray import."
           fi

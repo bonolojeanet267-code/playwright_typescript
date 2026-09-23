@@ -13,8 +13,12 @@ Add these GitHub repository secrets:
 - `XRAY_PROJECT_KEY`
 - `SAUCE_USERNAME`
 - `SAUCE_PASSWORD`
+- `JIRA_BASE_URL`
+- `JIRA_EMAIL`
+- `JIRA_API_TOKEN`
+- `XRAY_TEST_PLAN_KEY` (optional; the workflow creates a Test Plan automatically if it is not set)
 
-The workflow runs the Playwright suite, writes JUnit XML, and imports the results to Xray using the Xray Cloud REST API so the Jira dashboard updates automatically.
+The workflow creates or reuses a Jira/Xray Test Plan, runs the Playwright suite, writes JUnit XML, and imports the results to Xray using the Xray Cloud REST API so the Jira dashboard updates automatically with execution and trend charts.
 
 ## Local setup
 
