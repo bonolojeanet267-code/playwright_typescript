@@ -10,6 +10,7 @@ on:
 jobs:
   ui-test:
     strategy:
+      fail-fast: false
       matrix:
         browser: ["chromium", "firefox", "webkit"]
     timeout-minutes: 20
@@ -39,7 +40,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report-${{ matrix.browser }}
-          path: playwright-report/
+          path: |
+            playwright-report/
+            test-results/
           retention-days: 3
 
   api-test:
@@ -70,5 +73,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report-api
-          path: playwright-report/
+          path: |
+            playwright-report/
+            test-results/
           retention-days: 3
