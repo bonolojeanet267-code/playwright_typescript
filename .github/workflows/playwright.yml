@@ -64,11 +64,34 @@ jobs:
           XRAY_CLIENT_SECRET: ${{ secrets.XRAY_CLIENT_SECRET }}
           XRAY_PROJECT_KEY: ${{ secrets.XRAY_PROJECT_KEY }}
         run: |
+          $junitFile = Join-Path $env:GITHUB_WORKSPACE 'test-results/playwright-junit.xml'
+
           if ([string]::IsNullOrWhiteSpace($env:XRAY_CLIENT_ID) -or
               [string]::IsNullOrWhiteSpace($env:XRAY_CLIENT_SECRET) -or
               [string]::IsNullOrWhiteSpace($env:XRAY_PROJECT_KEY)) {
             Write-Host 'Xray credentials or project key are not configured; skipping import.'
             exit 0
+          }
+
+          if (-not (Test-Path $junitFile)) {
+            Write-Warning "JUnit report was not found at $junitFile; skipping Xray import."
+            exit 0
+          }
+
+          if ((Get-Item $junitFile).Length -eq 0) {
+            Write-Warning "JUnit report is empty; skipping Xray import."
+            exit 0
+          }
+
+          try {
+            [xml]$junit = Get-Content -Path $junitFile -Raw
+          }
+          catch {
+            throw "JUnit report is not valid XML: $($_.Exception.Message)"
+          }
+
+          if (-not $junit.testsuites -and -not $junit.testsuite) {
+            throw 'JUnit report does not contain a testsuite or testsuites element.'
           }
 
           $authResponse = Invoke-RestMethod `
@@ -80,15 +103,27 @@ jobs:
               client_secret = $env:XRAY_CLIENT_SECRET
             } | ConvertTo-Json)
 
-          $token = if ($authResponse -is [string]) { $authResponse.Trim('"') } else { $authResponse.token }
+          $token = if ($authResponse -is [string]) {
+            $authResponse.Trim('"')
+          } else {
+            $authResponse.token
+          }
+
+          if ([string]::IsNullOrWhiteSpace($token)) {
+            throw 'Xray authentication succeeded but no token was returned.'
+          }
+
           $importUri = "https://xray.cloud.getxray.app/api/v2/import/execution/junit?projectKey=$([uri]::EscapeDataString($env:XRAY_PROJECT_KEY))"
 
-          curl.exe --fail-with-body `
+          & curl.exe --fail-with-body --silent --show-error `
             --request POST `
             --header "Authorization: Bearer $token" `
-            --form "file=@test-results/playwright-junit.xml;type=application/xml" `
+            --form "file=@$junitFile;type=application/xml" `
             --url $importUri
 
+          if ($LASTEXITCODE -ne 0) {
+            throw "Xray JUnit import failed with exit code $LASTEXITCODE."
+          }
   api-test:
     runs-on: ubuntu-latest
     timeout-minutes: 20

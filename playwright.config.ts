@@ -26,7 +26,7 @@ export default defineConfig({
   outputDir: 'test-results',
   use: {
     baseURL: process.env.URL ?? 'https://www.saucedemo.com',
-    trace: 'on-first-retry',
+    trace: 'retain-on-failure',
     screenshot: 'on',
     video: 'on',
   },
