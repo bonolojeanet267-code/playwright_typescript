@@ -1,15 +1,15 @@
 {
-  "name": "saucedemo-playwright-azure",
+  "name": "saucedemo-playwright",
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "test": "npx playwright test --headed",
+    "test": "npx playwright test --headed --project=chromium",
     "test:chrome": "npx playwright test --headed --project=chromium",
     "test:firefox": "npx playwright test --headed --project=firefox",
     "test:webkit": "npx playwright test --headed --project=webkit",
     "test:api": "npx playwright test --project=api",
     "test:headless": "npx playwright test",
-    "test:ui": "npx playwright test --headed --project=chromium --project=firefox --project=webkit",
+    "test:ui": "npx playwright test --headed --project=chromium",
     "report": "playwright show-report"
   },
   "devDependencies": {
