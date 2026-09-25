@@ -41,19 +41,36 @@ jobs:
             test-results/
           retention-days: 3
 
-      - name: Debug junit file
+      - name: Debug JUnit file
         if: always()
         shell: pwsh
         run: |
-          if (Test-Path 'test-results/playwright-junit.xml') {
-            Write-Host "File exists. Size in bytes:"
-            (Get-Item 'test-results/playwright-junit.xml').Length
-            Write-Host "--- Content ---"
-            Get-Content 'test-results/playwright-junit.xml' -Raw
-          } else {
-            Write-Host "File does NOT exist at that path"
-            Write-Host "Contents of test-results folder:"
-            Get-ChildItem -Recurse test-results -ErrorAction SilentlyContinue
+          $junitFile = Join-Path $env:GITHUB_WORKSPACE 'test-results/playwright-junit.xml'
+
+          Write-Host "Looking for JUnit file:"
+          Write-Host $junitFile
+
+          if (Test-Path -LiteralPath $junitFile) {
+            Write-Host "JUnit file exists."
+
+            $fileInfo = Get-Item -LiteralPath $junitFile
+
+            Write-Host "File size: $($fileInfo.Length) bytes"
+
+            Write-Host "--- JUnit XML content ---"
+            Get-Content -LiteralPath $junitFile -Raw
+          }
+          else {
+            Write-Host "JUnit file does NOT exist."
+
+            Write-Host "--- Contents of test-results ---"
+
+            if (Test-Path -LiteralPath 'test-results') {
+              Get-ChildItem -Recurse 'test-results'
+            }
+            else {
+              Write-Host "test-results folder does not exist."
+            }
           }
 
       - name: Import UI results into Xray
@@ -66,6 +83,10 @@ jobs:
         run: |
           $junitFile = Join-Path $env:GITHUB_WORKSPACE 'test-results/playwright-junit.xml'
 
+          Write-Host "JUnit file path:"
+          Write-Host $junitFile
+
+          # Check Xray secrets
           if (
             [string]::IsNullOrWhiteSpace($env:XRAY_CLIENT_ID) -or
             [string]::IsNullOrWhiteSpace($env:XRAY_CLIENT_SECRET) -or
@@ -75,16 +96,24 @@ jobs:
             exit 0
           }
 
+          # Check JUnit file exists
           if (-not (Test-Path -LiteralPath $junitFile)) {
             Write-Warning "JUnit report was not found at $junitFile; skipping Xray import."
             exit 0
           }
 
-          if ((Get-Item -LiteralPath $junitFile).Length -eq 0) {
+          # Check JUnit file is not empty
+          $fileInfo = Get-Item -LiteralPath $junitFile
+
+          if ($fileInfo.Length -eq 0) {
             Write-Warning "JUnit report is empty; skipping Xray import."
             exit 0
           }
 
+          Write-Host "JUnit file found."
+          Write-Host "JUnit file size: $($fileInfo.Length) bytes"
+
+          # Validate XML
           try {
             [xml]$junit = Get-Content -LiteralPath $junitFile -Raw
           }
@@ -92,10 +121,17 @@ jobs:
             throw "JUnit report is not valid XML: $($_.Exception.Message)"
           }
 
+          # Check test cases
           $testCases = @($junit.SelectNodes('//testcase'))
+
           if ($testCases.Count -eq 0) {
             throw "JUnit report contains no testcase elements: $junitFile"
           }
+
+          Write-Host "Found $($testCases.Count) test cases in JUnit report."
+
+          # Authenticate with Xray
+          Write-Host "Authenticating with Xray..."
 
           $authResponse = Invoke-RestMethod `
             -Method Post `
@@ -108,7 +144,8 @@ jobs:
 
           $token = if ($authResponse -is [string]) {
             $authResponse.Trim('"')
-          } else {
+          }
+          else {
             $authResponse.token
           }
 
@@ -116,23 +153,51 @@ jobs:
             throw 'Xray authentication succeeded but no token was returned.'
           }
 
+          Write-Host "Xray authentication successful."
+
+          # Xray JUnit import URL
           $importUri =
             "https://xray.cloud.getxray.app/api/v2/import/execution/junit" +
             "?projectKey=$([uri]::EscapeDataString($env:XRAY_PROJECT_KEY))"
 
-          # Use -F explicitly so curl sends a multipart/form-data request.
-          & curl.exe `
-            --fail-with-body `
-            --silent `
-            --show-error `
-            --request POST `
-            --header "Authorization: Bearer $token" `
-            -F "file=@$junitFile;type=application/xml" `
-            --url $importUri
+          Write-Host "Xray import URL:"
+          Write-Host $importUri
 
-          if ($LASTEXITCODE -ne 0) {
-            throw "Xray JUnit import failed with exit code $LASTEXITCODE."
+          Write-Host "Importing JUnit results into Xray..."
+
+          # Read the XML
+          $junitContent = Get-Content -LiteralPath $junitFile -Raw
+
+          # Authorization header
+          $headers = @{
+            Authorization = "Bearer $token"
           }
+
+          try {
+            $response = Invoke-RestMethod `
+              -Method Post `
+              -Uri $importUri `
+              -Headers $headers `
+              -ContentType 'text/xml' `
+              -Body $junitContent
+
+            Write-Host "Xray import successful."
+
+            Write-Host "Xray response:"
+            $response | ConvertTo-Json -Depth 10
+          }
+          catch {
+            Write-Host "Xray import failed."
+
+            if ($_.ErrorDetails.Message) {
+              Write-Host "Xray error response:"
+              Write-Host $_.ErrorDetails.Message
+            }
+
+            throw
+          }
+
+
   api-test:
     runs-on: ubuntu-latest
     timeout-minutes: 20
