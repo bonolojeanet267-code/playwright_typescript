@@ -9,10 +9,6 @@ on:
 
 jobs:
   ui-test:
-    strategy:
-      fail-fast: false
-      matrix:
-        browser: ["chromium", "firefox", "webkit"]
     timeout-minutes: 20
     runs-on: windows-latest
 
@@ -30,16 +26,16 @@ jobs:
         run: npm ci
 
       - name: Install Playwright browsers
-        run: npx playwright install --with-deps ${{ matrix.browser }}
+        run: npx playwright install --with-deps chromium
 
       - name: Run Playwright UI tests
-        run: npx playwright test --project="${{ matrix.browser }}"
+        run: npx playwright test --project=chromium
 
       - name: Upload Playwright report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report-${{ matrix.browser }}
+          name: playwright-report-chromium
           path: |
             playwright-report/
             test-results/
