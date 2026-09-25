@@ -41,6 +41,39 @@ jobs:
             test-results/
           retention-days: 3
 
+      - name: Import UI results into Xray
+        if: always()
+        shell: pwsh
+        env:
+          XRAY_CLIENT_ID: ${{ secrets.XRAY_CLIENT_ID }}
+          XRAY_CLIENT_SECRET: ${{ secrets.XRAY_CLIENT_SECRET }}
+          XRAY_PROJECT_KEY: ${{ vars.XRAY_PROJECT_KEY }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:XRAY_CLIENT_ID) -or
+              [string]::IsNullOrWhiteSpace($env:XRAY_CLIENT_SECRET) -or
+              [string]::IsNullOrWhiteSpace($env:XRAY_PROJECT_KEY)) {
+            Write-Host 'Xray credentials or project key are not configured; skipping import.'
+            exit 0
+          }
+
+          $authResponse = Invoke-RestMethod `
+            -Method Post `
+            -Uri 'https://xray.cloud.getxray.app/api/v2/authenticate' `
+            -ContentType 'application/json' `
+            -Body (@{
+              client_id = $env:XRAY_CLIENT_ID
+              client_secret = $env:XRAY_CLIENT_SECRET
+            } | ConvertTo-Json)
+
+          $token = if ($authResponse -is [string]) { $authResponse.Trim('"') } else { $authResponse.token }
+          $importUri = "https://xray.cloud.getxray.app/api/v2/import/execution/junit?projectKey=$([uri]::EscapeDataString($env:XRAY_PROJECT_KEY))"
+
+          Invoke-RestMethod `
+            -Method Post `
+            -Uri $importUri `
+            -Headers @{ Authorization = "Bearer $token" } `
+            -Form @{ file = Get-Item 'test-results/playwright-junit.xml' }
+
   api-test:
     runs-on: ubuntu-latest
     timeout-minutes: 20

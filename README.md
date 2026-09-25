@@ -17,3 +17,12 @@ The HTML report is written to `playwright-report` and JUnit output to `test-resu
 The test suite has one HTTP API project and runs the UI tests against Chromium. Use `npm run test:api` or `npm run test:chrome` to run either slice independently.
 
 Optional credentials can be supplied with `SAUCE_USERNAME` and `SAUCE_PASSWORD`; defaults are SauceDemo's public `standard_user` and `secret_sauce` credentials.
+
+## Xray Cloud integration
+
+The GitHub Actions Chromium job imports `test-results/playwright-junit.xml` into Xray after the tests run. Configure these repository settings in GitHub:
+
+- Secrets: `XRAY_CLIENT_ID` and `XRAY_CLIENT_SECRET`
+- Repository variable: `XRAY_PROJECT_KEY`
+
+The import is skipped when any of these values is missing. The Xray client secret is read only from GitHub Actions secrets and is not committed to the repository.
