@@ -41,6 +41,21 @@ jobs:
             test-results/
           retention-days: 3
 
+      - name: Debug junit file
+        if: always()
+        shell: pwsh
+        run: |
+          if (Test-Path 'test-results/playwright-junit.xml') {
+            Write-Host "File exists. Size in bytes:"
+            (Get-Item 'test-results/playwright-junit.xml').Length
+            Write-Host "--- Content ---"
+            Get-Content 'test-results/playwright-junit.xml' -Raw
+          } else {
+            Write-Host "File does NOT exist at that path"
+            Write-Host "Contents of test-results folder:"
+            Get-ChildItem -Recurse test-results -ErrorAction SilentlyContinue
+          }
+
       - name: Import UI results into Xray
         if: always()
         shell: pwsh
@@ -68,11 +83,11 @@ jobs:
           $token = if ($authResponse -is [string]) { $authResponse.Trim('"') } else { $authResponse.token }
           $importUri = "https://xray.cloud.getxray.app/api/v2/import/execution/junit?projectKey=$([uri]::EscapeDataString($env:XRAY_PROJECT_KEY))"
 
-          Invoke-RestMethod `
-            -Method Post `
-            -Uri $importUri `
-            -Headers @{ Authorization = "Bearer $token" } `
-            -Form @{ file = Get-Item 'test-results/playwright-junit.xml' }
+          curl.exe --fail-with-body `
+            --request POST `
+            --header "Authorization: Bearer $token" `
+            --form "file=@test-results/playwright-junit.xml;type=application/xml" `
+            --url $importUri
 
   api-test:
     runs-on: ubuntu-latest
