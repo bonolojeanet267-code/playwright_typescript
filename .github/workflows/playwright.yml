@@ -66,32 +66,35 @@ jobs:
         run: |
           $junitFile = Join-Path $env:GITHUB_WORKSPACE 'test-results/playwright-junit.xml'
 
-          if ([string]::IsNullOrWhiteSpace($env:XRAY_CLIENT_ID) -or
-              [string]::IsNullOrWhiteSpace($env:XRAY_CLIENT_SECRET) -or
-              [string]::IsNullOrWhiteSpace($env:XRAY_PROJECT_KEY)) {
+          if (
+            [string]::IsNullOrWhiteSpace($env:XRAY_CLIENT_ID) -or
+            [string]::IsNullOrWhiteSpace($env:XRAY_CLIENT_SECRET) -or
+            [string]::IsNullOrWhiteSpace($env:XRAY_PROJECT_KEY)
+          ) {
             Write-Host 'Xray credentials or project key are not configured; skipping import.'
             exit 0
           }
 
-          if (-not (Test-Path $junitFile)) {
+          if (-not (Test-Path -LiteralPath $junitFile)) {
             Write-Warning "JUnit report was not found at $junitFile; skipping Xray import."
             exit 0
           }
 
-          if ((Get-Item $junitFile).Length -eq 0) {
+          if ((Get-Item -LiteralPath $junitFile).Length -eq 0) {
             Write-Warning "JUnit report is empty; skipping Xray import."
             exit 0
           }
 
           try {
-            [xml]$junit = Get-Content -Path $junitFile -Raw
+            [xml]$junit = Get-Content -LiteralPath $junitFile -Raw
           }
           catch {
             throw "JUnit report is not valid XML: $($_.Exception.Message)"
           }
 
-          if (-not $junit.testsuites -and -not $junit.testsuite) {
-            throw 'JUnit report does not contain a testsuite or testsuites element.'
+          $testCases = @($junit.SelectNodes('//testcase'))
+          if ($testCases.Count -eq 0) {
+            throw "JUnit report contains no testcase elements: $junitFile"
           }
 
           $authResponse = Invoke-RestMethod `
@@ -113,12 +116,18 @@ jobs:
             throw 'Xray authentication succeeded but no token was returned.'
           }
 
-          $importUri = "https://xray.cloud.getxray.app/api/v2/import/execution/junit?projectKey=$([uri]::EscapeDataString($env:XRAY_PROJECT_KEY))"
+          $importUri =
+            "https://xray.cloud.getxray.app/api/v2/import/execution/junit" +
+            "?projectKey=$([uri]::EscapeDataString($env:XRAY_PROJECT_KEY))"
 
-          & curl.exe --fail-with-body --silent --show-error `
+          # Use -F explicitly so curl sends a multipart/form-data request.
+          & curl.exe `
+            --fail-with-body `
+            --silent `
+            --show-error `
             --request POST `
             --header "Authorization: Bearer $token" `
-            --form "file=@$junitFile;type=application/xml" `
+            -F "file=@$junitFile;type=application/xml" `
             --url $importUri
 
           if ($LASTEXITCODE -ne 0) {
