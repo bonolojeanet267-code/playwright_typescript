@@ -80,6 +80,7 @@ jobs:
           XRAY_CLIENT_ID: ${{ secrets.XRAY_CLIENT_ID }}
           XRAY_CLIENT_SECRET: ${{ secrets.XRAY_CLIENT_SECRET }}
           XRAY_PROJECT_KEY: ${{ secrets.XRAY_PROJECT_KEY }}
+          XRAY_TEST_EXEC_KEY: ${{ vars.XRAY_TEST_EXEC_KEY }}
         run: |
           $junitFile = Join-Path $env:GITHUB_WORKSPACE 'test-results/playwright-junit.xml'
 
@@ -94,6 +95,10 @@ jobs:
           ) {
             Write-Host 'Xray credentials or project key are not configured; skipping import.'
             exit 0
+          }
+
+          if ([string]::IsNullOrWhiteSpace($env:XRAY_TEST_EXEC_KEY)) {
+            throw 'XRAY_TEST_EXEC_KEY is not configured. Set it to the issue key of the pre-created Xray Test Execution; imports will not create executions automatically.'
           }
 
           # Check JUnit file exists
@@ -158,12 +163,13 @@ jobs:
           # Xray JUnit import URL
           $importUri =
             "https://xray.cloud.getxray.app/api/v2/import/execution/junit" +
-            "?projectKey=$([uri]::EscapeDataString($env:XRAY_PROJECT_KEY))"
+            "?projectKey=$([uri]::EscapeDataString($env:XRAY_PROJECT_KEY))" +
+            "&testExecKey=$([uri]::EscapeDataString($env:XRAY_TEST_EXEC_KEY))"
 
           Write-Host "Xray import URL:"
           Write-Host $importUri
 
-          Write-Host "Importing JUnit results into Xray..."
+          Write-Host "Importing JUnit results into existing Xray execution $($env:XRAY_TEST_EXEC_KEY)..."
 
           # Read the XML
           $junitContent = Get-Content -LiteralPath $junitFile -Raw
