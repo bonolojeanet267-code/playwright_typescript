@@ -28,6 +28,6 @@ The GitHub Actions Chromium job imports `test-results/playwright-junit.xml` into
 
 - Secrets: `XRAY_CLIENT_ID` and `XRAY_CLIENT_SECRET`
 - Repository variable: `XRAY_PROJECT_KEY`
-- Repository variable: `XRAY_TEST_EXEC_KEY`, set to the issue key of one existing Xray Test Execution (for example, `QA-123`)
+- Repository variable: `XRAYTESTEXECKEY`, set to the issue key of one existing Xray Test Execution (for example, `QA-123`)
 
-Create the Test Execution once in Jira/Xray, then set `XRAY_TEST_EXEC_KEY` to its issue key. Every pipeline run imports JUnit results into that existing execution instead of creating a new one. The import is skipped when the Xray credentials or project key are missing, and fails clearly if `XRAY_TEST_EXEC_KEY` is missing. The Xray client secret is read only from GitHub Actions secrets and is not committed to the repository.
+Create the Test Execution once in Jira/Xray, then set `XRAYTESTEXECKEY` to its issue key. Every pipeline run imports JUnit results into that existing execution instead of creating a new one. The import is skipped when the Xray credentials or project key are missing, and fails clearly if `XRAYTESTEXECKEY` is missing. The Xray client secret is read only from GitHub Actions secrets and is not committed to the repository.

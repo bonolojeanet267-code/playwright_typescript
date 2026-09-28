@@ -80,7 +80,7 @@ jobs:
           XRAY_CLIENT_ID: ${{ secrets.XRAY_CLIENT_ID }}
           XRAY_CLIENT_SECRET: ${{ secrets.XRAY_CLIENT_SECRET }}
           XRAY_PROJECT_KEY: ${{ secrets.XRAY_PROJECT_KEY }}
-          XRAY_TEST_EXEC_KEY: ${{ vars.XRAY_TEST_EXEC_KEY }}
+          XRAY_TEST_EXEC_KEY: ${{ vars.XRAYTESTEXECKEY }}
         run: |
           $junitFile = Join-Path $env:GITHUB_WORKSPACE 'test-results/playwright-junit.xml'
 
