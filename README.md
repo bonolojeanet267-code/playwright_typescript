@@ -18,6 +18,10 @@ The test suite has one HTTP API project and runs the UI tests against Chromium. 
 
 Optional credentials can be supplied with `SAUCE_USERNAME` and `SAUCE_PASSWORD`; defaults are SauceDemo's public `standard_user` and `secret_sauce` credentials.
 
+The UI projects authenticate once in `e2e/tests/auth.setup.ts` and reuse the saved browser state from `playwright/.auth/user.json`. The state file is generated locally and excluded from Git. API tests can use the `api` fixture from `e2e/fixtures/customFixtures.ts`, which creates and disposes an isolated Playwright API request context.
+
+SauceDemo and the QA practice site used here do not provide a supported API for creating test users or inventory records, so test data cannot currently be seeded through API calls. The API fixture is ready to support setup calls if a testable application API is added.
+
 ## Xray Cloud integration
 
 The GitHub Actions Chromium job imports `test-results/playwright-junit.xml` into Xray after the tests run. Configure these repository settings in GitHub:

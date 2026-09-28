@@ -1,33 +1,24 @@
-import { test, expect } from '@playwright/test';
-import { Env } from '@e2e/frameworkConfig/env';
-import LoginPage from '@pages/loginPage';
-import InventoryPage from '@pages/inventoryPage';
+import { test, expect } from '@e2e/fixtures/customFixtures';
 
 test.describe('SauceDemo inventory UI', () => {
-  test('logs in and displays the inventory', async ({ page }) => {
-    const loginPage = new LoginPage(page);
-    await page.goto(Env.BASE_URL);
-    const inventoryPage = await loginPage.login(Env.USERNAME, Env.PASSWORD);
+  test('reuses the authenticated session and displays the inventory', async ({ page, inventoryPage }) => {
+    await page.goto('/inventory.html');
 
     await expect(page).toHaveURL(/inventory.html/);
     await expect(inventoryPage.productsHeader).toBeVisible();
     await expect(inventoryPage.inventoryItems).toHaveCount(6);
   });
 
-  test('sorts products by price from low to high', async ({ page }) => {
-    const loginPage = new LoginPage(page);
-    await page.goto(Env.BASE_URL);
-    const inventoryPage = await loginPage.login(Env.USERNAME, Env.PASSWORD);
+  test('sorts products by price from low to high', async ({ page, inventoryPage }) => {
+    await page.goto('/inventory.html');
 
     await inventoryPage.sortDropdown.selectOption('lohi');
     await expect(inventoryPage.productNames.first()).toHaveText('Sauce Labs Onesie');
     await expect(inventoryPage.productNames.last()).toHaveText('Sauce Labs Fleece Jacket');
   });
 
-  test('adds and removes an item from the cart', async ({ page }) => {
-    const loginPage = new LoginPage(page);
-    await page.goto(Env.BASE_URL);
-    const inventoryPage = await loginPage.login(Env.USERNAME, Env.PASSWORD);
+  test('adds and removes an item from the cart', async ({ page, inventoryPage }) => {
+    await page.goto('/inventory.html');
 
     await inventoryPage.addBackpackButton.click();
     await expect(inventoryPage.cartBadge).toHaveText('1');
@@ -37,10 +28,8 @@ test.describe('SauceDemo inventory UI', () => {
     await expect(inventoryPage.backpackText).toHaveCount(0);
   });
 
-  test('requires checkout information', async ({ page }) => {
-    const loginPage = new LoginPage(page);
-    await page.goto(Env.BASE_URL);
-    const inventoryPage = await loginPage.login(Env.USERNAME, Env.PASSWORD);
+  test('requires checkout information', async ({ page, inventoryPage }) => {
+    await page.goto('/inventory.html');
 
     await inventoryPage.addBackpackButton.click();
     await inventoryPage.cartLink.click();
@@ -49,10 +38,8 @@ test.describe('SauceDemo inventory UI', () => {
     await expect(inventoryPage.firstNameError).toBeVisible();
   });
 
-  test('adds an item and completes checkout', async ({ page }) => {
-    const loginPage = new LoginPage(page);
-    await page.goto(Env.BASE_URL);
-    const inventoryPage = await loginPage.login(Env.USERNAME, Env.PASSWORD);
+  test('adds an item and completes checkout', async ({ page, inventoryPage }) => {
+    await page.goto('/inventory.html');
 
     await inventoryPage.addBackpackButton.click();
     await expect(inventoryPage.cartBadge).toHaveText('1');
@@ -68,11 +55,13 @@ test.describe('SauceDemo inventory UI', () => {
   });
 });
 
-test('rejects invalid login credentials', async ({ page }) => {
-  const loginPage = new LoginPage(page);
+test.describe('SauceDemo login validation', () => {
+  test.use({ storageState: { cookies: [], origins: [] } });
 
-  await page.goto(Env.BASE_URL);
-  await loginPage.login('standard_user', 'incorrect_password');
+  test('rejects invalid login credentials', async ({ page, loginPage }) => {
+    await page.goto('/');
+    await loginPage.login('standard_user', 'incorrect_password');
 
-  await expect(page.getByRole('alert')).toContainText('Username and password do not match any user');
+    await expect(page.getByRole('alert')).toContainText('Username and password do not match any user');
+  });
 });
