@@ -172,7 +172,6 @@ jobs:
           $headers = @{
             Authorization = "Bearer $token"
           }
-
           try {
             $response = Invoke-RestMethod `
               -Method Post `
